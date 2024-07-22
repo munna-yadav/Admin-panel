@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Project Management</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <nav>
+        <ul id="navbar-ul">
+            <li><a href="projects.html" id="active">Edit Projects</a></li>
+            <li><a href="#">Edit About Us</a></li>
+            <li><a href="#">Edit Contact Us</a></li>
+        </ul>
+    </nav>
+    <button id="addProjectButton">Add Project</button>
+    <table id="projectsTable">
+        <thead>
+            <tr>
+
+                <th>Title</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <dialog id="editDialog">
+        <form method="dialog">
+            <h2>Edit Project</h2>
+            <label for="titleInput">Title:</label>
+            <input type="text" id="titleInput" required>
+            <br>
+            <label for="descriptionInput">Description:</label>
+            <textarea id="descriptionInput" required></textarea>
+            <br>
+            <menu>
+                <button id="saveButton" value="save">Save</button>
+                <button id="cancelButton" value="cancel">Cancel</button>
+            </menu>
+        </form>
+    </dialog>
+
+    <dialog id="addDialog">
+        <form method="dialog">
+            <h2>Add Project</h2>
+            <label for="newTitleInput">Title:</label>
+            <input type="text" id="newTitleInput" required>
+            <br>
+            <label for="newDescriptionInput">Description:</label>
+            <textarea id="newDescriptionInput" required></textarea>
+            <br>
+            <menu>
+                <button id="addSaveButton" value="save">Add</button>
+                <button id="addCancelButton" value="cancel">Cancel</button>
+            </menu>
+        </form>
+    </dialog>
+
+    <script>
+        let currentProject = null;
+        let currentRow = null;
+
+        async function fetchAndDisplayProjects() {
+            try {
+                const response = await fetch('http://localhost:3000/api/v1/completed-projects/getDetails');
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const projects = await response.json();
+
+                const tableBody = document.querySelector('#projectsTable tbody');
+                tableBody.innerHTML = ''; // Clear the table body
+
+                projects.data.forEach((project, index) => {
+                    const row = document.createElement('tr');
+
+                    // const serialNumberCell = document.createElement('td');
+                    // serialNumberCell.textContent = index + 1;
+                    // row.appendChild(serialNumberCell);
+
+                    const titleCell = document.createElement('td');
+                    titleCell.textContent = project.title;
+                    row.appendChild(titleCell);
+
+                    const actionsCell = document.createElement('td');
+
+                    const editButton = document.createElement('button');
+                    editButton.textContent = 'Edit';
+                    editButton.onclick = () => editProject(project, row);
+                    actionsCell.appendChild(editButton);
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.classList.add('delete');
+                    deleteButton.onclick = () => deleteProject(project._id, row);
+                    actionsCell.appendChild(deleteButton);
+
+                    row.appendChild(actionsCell);
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error fetching projects:', error);
+            }
+        }
+
+        function editProject(project, row) {
+            currentProject = project;
+            currentRow = row;
+
+            const editDialog = document.getElementById('editDialog');
+            const titleInput = document.getElementById('titleInput');
+            const descriptionInput = document.getElementById('descriptionInput');
+
+            titleInput.value = project.title;
+            descriptionInput.value = project.description;
+
+            editDialog.showModal();
+        }
+
+        document.getElementById('editDialog').addEventListener('close', function () {
+            if (this.returnValue === 'save') {
+                const titleInput = document.getElementById('titleInput').value;
+                const descriptionInput = document.getElementById('descriptionInput').value;
+                saveProject(currentProject._id, titleInput, descriptionInput, currentRow, currentProject);
+            }
+        });
+
+        function saveProject(id, newTitle, newDescription, row, project) {
+            fetch(`http://localhost:3000/api/v1/completed-projects/updateProject`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ _id: id, title: newTitle, description: newDescription }),
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+
+                    alert("project updated Sucessfully. Reload the page")
+                    return response.json();
+
+                })
+                .then(updatedProject => {
+                    project.title = updatedProject.title; // Update project title in memory
+                    project.description = updatedProject.description; // Update project description in memory
+
+                    const titleCell = row.querySelector('td:nth-child(2)');
+                    titleCell.textContent = updatedProject.title;
+
+                    const actionsCell = row.querySelector('td:nth-child(3)');
+                    actionsCell.innerHTML = '';
+
+                    const editButton = document.createElement('button');
+                    editButton.textContent = 'Edit';
+                    editButton.onclick = () => editProject(project, row);
+                    actionsCell.appendChild(editButton);
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.classList.add('delete');
+                    deleteButton.onclick = () => deleteProject(updatedProject._id, row);
+                    actionsCell.appendChild(deleteButton);
+
+                   
+                })
+                .catch(error => {
+                    console.error('Error updating project:', error);
+                });
+                fetchAndDisplayProjects();
+        }
+
+        function deleteProject(id, row) {
+            fetch(`http://localhost:3000/api/v1/completed-projects/deleteProject`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ _id: id }),
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    row.remove();
+                })
+                .catch(error => {
+                    console.error('Error deleting project:', error);
+                });
+        }
+
+        document.getElementById('addProjectButton').addEventListener('click', () => {
+            const addDialog = document.getElementById('addDialog');
+            document.getElementById('newTitleInput').value = ''; // Reset title input
+            document.getElementById('newDescriptionInput').value = ''; // Reset description input
+            addDialog.showModal();
+
+        });
+
+        document.getElementById('addDialog').addEventListener('close', function () {
+            if (this.returnValue === 'save') {
+                const newTitleInput = document.getElementById('newTitleInput').value;
+                const newDescriptionInput = document.getElementById('newDescriptionInput').value;
+                addProject(newTitleInput, newDescriptionInput);
+            }
+
+        });
+
+        function addProject(title, description) {
+            fetch(`http://localhost:3000/api/v1/completed-projects/create-project`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ title, description }),
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(newProject => {
+                    fetchAndDisplayProjects();
+                })
+                .catch(error => {
+                    console.error('Error adding project:', error);
+                });
+        }
+
+        fetchAndDisplayProjects();
+    </script>
+</body>
+
+</html>
