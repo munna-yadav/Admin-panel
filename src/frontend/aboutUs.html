@@ -6,6 +6,38 @@
     <title>Document</title>
 </head>
 <body>
-    
+    <h2>About Us</h2>
+    <p id="About"></p>
+    <dialog id="editDialog">
+        <form method="dialog">
+            <h2>Edit Project</h2>
+           
+            <label for="descriptionInput">Description:</label>
+            <textarea id="descriptionInput" required></textarea>
+            <br>
+            <menu>
+                <button id="saveButton" value="save">Save</button>
+                <button id="cancelButton" value="cancel">Cancel</button>
+            </menu>
+        </form>
+    </dialog>
+    <script>
+
+        const about = document.querySelector('#About')
+
+        const getDetail = async ()=>{
+            const response = await(await fetch('http://localhost:3000/api/v1/about/get-about-us')).json()   
+            console.log(response);
+            console.log(response.data[0]);
+            about.textContent = response.data[0].description;
+        }
+        getDetail()
+
+        const editAbout = async()=>{
+            const editDialog = document.querySelector("#editDialog")
+            editDialog.showModal()
+        }
+        editAbout()
+    </script>
 </body>
 </html>
